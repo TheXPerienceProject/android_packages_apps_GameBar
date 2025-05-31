@@ -37,5 +37,9 @@ allow gamebar vendor_sysfs_kgsl_gpuclk:file { read open getattr };
 
 or follow this commit
 
-
+sepolicy
 https://github.com/TheXPerienceProject/android_device_xperience_sepolicy/commit/b62d3c027dc8042d3e37329d2e841236d5b1efc3
+
+
+original work at
+https://github.com/project-dynamic/android_device_xiaomi_peridot/tree/401a25032ab8ceafe5df40e418326389fc24cb00
