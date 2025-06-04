@@ -74,10 +74,6 @@ limitations under the License.
                 android:resource="@string/game_bar_summary" />
         </activity>
 
-        <!-- GameBar AppSelector -->
-        <activity android:name=".GameBarAppSelectorActivity" />
-        <activity android:name=".GameBarAppRemoverActivity" />
-
         <!-- GameBar Overlay Tile Service -->
         <service
             android:name=".GameBarTileService"
@@ -97,6 +93,11 @@ limitations under the License.
         <service
             android:name=".GameBarMonitorService"
             android:exported="false" />
+
+        <activity
+            android:name=".gamebar.GameBarPerAppConfigActivity"
+            android:exported="false"
+            android:theme="@style/Theme.SubSettingsBase" />
 
         <!-- GameBar BootReceiver -->
         <receiver
