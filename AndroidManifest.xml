@@ -95,7 +95,7 @@ limitations under the License.
             android:exported="false" />
 
         <activity
-            android:name=".gamebar.GameBarPerAppConfigActivity"
+            android:name=".GameBarPerAppConfigActivity"
             android:exported="false"
             android:theme="@style/Theme.SubSettingsBase" />
 
