@@ -144,8 +144,8 @@ public class GameBar {
     };
 
     private GameBar(Context context) {
-        mContext = context;
-        mWindowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        mContext = context.getApplicationContext();
+        mWindowManager = (WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE);
         mHandler = new Handler(Looper.getMainLooper());
 
         mBgDrawable = new GradientDrawable();
@@ -364,6 +364,9 @@ public class GameBar {
         mGestureDetector = null;
         mBgDrawable = null;
         mLayoutParams = null;
+        mOverlayView = null;
+        mRootLayout = null;
+        sInstance = null;
     }
 
     private void updateStats() {
