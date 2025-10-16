@@ -366,6 +366,21 @@ public class GameBarFragment extends PreferenceFragmentCompat {
     }
 
     @Override
+    public void onPause() {
+        super.onPause();
+        if (mGameBar != null && !mGameBar.isShowing()) {
+            getContext().stopService(new Intent(getContext(), GameBarMonitorService.class));
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // Clean references
+        mGameBar = null;
+    }
+
+    @Override
     public void onResume() {
         super.onResume();
         if (!hasUsageStatsPermission(requireContext())) {

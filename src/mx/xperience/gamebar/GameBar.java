@@ -24,6 +24,7 @@ import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.TypedValue;
@@ -46,12 +47,18 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Map;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public class GameBar {
 
     private static GameBar sInstance;
+    //threads
+    private HandlerThread mUpdateThread;
+    private Handler mBackgroundHandler;
+
     public static synchronized GameBar getInstance(Context context) {
         if (sInstance == null) {
             sInstance = new GameBar(context.getApplicationContext());
@@ -182,6 +189,10 @@ public class GameBar {
                 return super.onSingleTapConfirmed(e);
             }
         });
+
+        mUpdateThread = new HandlerThread("GameBarUpdate");
+        mUpdateThread.start();
+        mBackgroundHandler = new Handler(mUpdateThread.getLooper());
     }
 
     public void applyPreferences() {
