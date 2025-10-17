@@ -34,6 +34,7 @@ public class GameBarMonitorService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+
         mHandler = new Handler(android.os.Looper.getMainLooper());
         mMonitorRunnable = new Runnable() {
             @Override
@@ -51,6 +52,9 @@ public class GameBarMonitorService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (!mIsRunning) {
+            // Reset state when starting
+            mLastForegroundApp = "";
+            mLastGameBarState = false;
             mIsRunning = true;
             if (mHandler != null && mMonitorRunnable != null) {
                 mHandler.post(mMonitorRunnable);
@@ -63,6 +67,9 @@ public class GameBarMonitorService extends Service {
     private boolean mLastGameBarState = false;
     
     private void monitorForegroundApp() {
+        // Early return if service is not running or handler is null
+        if (!mIsRunning || mHandler == null) return;
+
         try {
             if (!mIsRunning) return;
             
@@ -125,23 +132,16 @@ public class GameBarMonitorService extends Service {
     public void onDestroy() {
         super.onDestroy();
         mIsRunning = false;
+        mLastForegroundApp = "";
+        mLastGameBarState = false;
         
         if (mHandler != null) {
             mHandler.removeCallbacks(mMonitorRunnable);
             mHandler.removeCallbacksAndMessages(null);
+            mHandler = null;
         }
         
-        // Clean up GameBar instance
-        try {
-            GameBar.destroyInstance();
-        } catch (Exception e) {
-            android.util.Log.e("GameBarMonitorService", "Error destroying GameBar instance", e);
-        }
-        
-        // Clear state variables to prevent lingering references
-        mLastForegroundApp = "";
-        mLastGameBarState = false;
-        mHandler = null;
         mMonitorRunnable = null;
+
     }
 }
