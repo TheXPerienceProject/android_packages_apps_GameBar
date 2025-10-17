@@ -330,18 +330,22 @@ public class GameBar {
     private float initialTouchX, initialTouchY;
 
     public void hide() {
-        if (!mIsShowing) return;
+        if (!mIsShowing || mWindowManager == null) return;
         stopUpdates();
         try {
-            if (mOverlayView != null && mWindowManager != null) {
+            if (mOverlayView != null) {
                 mWindowManager.removeView(mOverlayView);
                 mOverlayView = null;
             }
+        } catch (IllegalArgumentException e) {
+            // View not attached to window manager - ignore
         } catch (Exception e) {
-            // View might already be removed
+            // Other exceptions during view removal
+        } finally {
+            // Ensure cleanup even if removal fails
+            mOverlayView = null;
+            mRootLayout = null;
         }
-        mRootLayout = null;
-        mLayoutChanged = true; // Mark layout as changed
         mIsShowing = false;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             GameBarFpsMeter.getInstance(mContext).stop();
