@@ -31,7 +31,7 @@ public class ForegroundAppDetector {
     private static String sLastKnownPackage = "Unknown";
     private static long sLastUpdateTime = 0;
     private static final long CACHE_TIMEOUT = 500; // Reduce cache timeout
-
+    
     // Simple reflection caching
     private static boolean sReflectionSetupFailed = false;
 
@@ -48,7 +48,7 @@ public class ForegroundAppDetector {
             sLastUpdateTime = currentTime;
             return pkg;
         }
-
+        
         if (!sReflectionSetupFailed) {
             pkg = tryReflectActivityTaskManager();
             if (pkg != null) {
@@ -57,7 +57,7 @@ public class ForegroundAppDetector {
                 return pkg;
             }
         }
-
+        
         // Return cached value if available, otherwise "Unknown"
         return sLastKnownPackage;
     }
@@ -89,13 +89,13 @@ public class ForegroundAppDetector {
             if (sReflectionSetupFailed) {
                 return null;
             }
-
+            
             Class<?> atmClass = Class.forName("android.app.ActivityTaskManager");
             Method getServiceMethod = atmClass.getDeclaredMethod("getService");
             getServiceMethod.setAccessible(true);
             Object atmService = getServiceMethod.invoke(null);
             Method getTasksMethod = atmService.getClass().getMethod("getTasks", int.class);
-
+            
             @SuppressWarnings("unchecked")
             List<?> taskList = (List<?>) getTasksMethod.invoke(atmService, 1);
             if (taskList != null && !taskList.isEmpty()) {

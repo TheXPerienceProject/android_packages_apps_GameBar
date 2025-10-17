@@ -58,7 +58,7 @@ public class GameBar {
         }
         return sInstance;
     }
-
+    
     public static synchronized void destroyInstance() {
         if (sInstance != null) {
             sInstance.cleanup();
@@ -119,7 +119,7 @@ public class GameBar {
 
     private boolean mShowRamSpeed = false;
     private boolean mShowRamTemp = false;
-
+    
     // Track if layout needs refresh
     private boolean mLayoutChanged = false;
 
@@ -347,7 +347,7 @@ public class GameBar {
             GameBarFpsMeter.getInstance(mContext).stop();
         }
     }
-
+    
     private void stopUpdates() {
         if (mHandler != null) {
             mHandler.removeCallbacks(mUpdateRunnable);
@@ -355,7 +355,7 @@ public class GameBar {
             mHandler.removeCallbacksAndMessages(null);
         }
     }
-
+    
     public void cleanup() {
         hide();
         if (mHandler != null) {

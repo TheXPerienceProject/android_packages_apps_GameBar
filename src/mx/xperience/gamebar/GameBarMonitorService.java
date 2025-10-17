@@ -47,7 +47,7 @@ public class GameBarMonitorService extends Service {
             }
         };
     }
-
+    
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (!mIsRunning) {
@@ -61,14 +61,14 @@ public class GameBarMonitorService extends Service {
 
     private String mLastForegroundApp = "";
     private boolean mLastGameBarState = false;
-
+    
     private void monitorForegroundApp() {
         try {
             if (!mIsRunning) return;
-
+            
             var prefs = PreferenceManager.getDefaultSharedPreferences(this);
             boolean masterEnabled = prefs.getBoolean("game_bar_enable", false);
-
+            
             if (masterEnabled) {
                 if (!mLastGameBarState) {
                     GameBar gameBar = GameBar.getInstance(this);
@@ -78,7 +78,7 @@ public class GameBarMonitorService extends Service {
                 }
                 return;
             }
-
+            
             boolean autoEnabled = prefs.getBoolean("game_bar_auto_enable", false);
             if (!autoEnabled) {
                 if (mLastGameBarState) {
@@ -87,17 +87,17 @@ public class GameBarMonitorService extends Service {
                 }
                 return;
             }
-
+            
             String foreground = ForegroundAppDetector.getForegroundPackageName(this);
-
+            
             // Only update if foreground app changed
             if (!foreground.equals(mLastForegroundApp)) {
                 Set<String> autoApps = prefs.getStringSet(
                     mx.xperience.gamebar.GameBarPerAppConfigFragment.PREF_AUTO_APPS,
                     new HashSet<>());
-
+                    
                 boolean shouldShow = autoApps.contains(foreground);
-
+                
                 if (shouldShow && !mLastGameBarState) {
                     GameBar gameBar = GameBar.getInstance(this);
                     gameBar.applyPreferences();
@@ -107,7 +107,7 @@ public class GameBarMonitorService extends Service {
                     GameBar.getInstance(this).hide();
                     mLastGameBarState = false;
                 }
-
+                
                 mLastForegroundApp = foreground;
             }
         } catch (Exception e) {
@@ -125,19 +125,19 @@ public class GameBarMonitorService extends Service {
     public void onDestroy() {
         super.onDestroy();
         mIsRunning = false;
-
+        
         if (mHandler != null) {
             mHandler.removeCallbacks(mMonitorRunnable);
             mHandler.removeCallbacksAndMessages(null);
         }
-
+        
         // Clean up GameBar instance
         try {
             GameBar.destroyInstance();
         } catch (Exception e) {
             android.util.Log.e("GameBarMonitorService", "Error destroying GameBar instance", e);
         }
-
+        
         // Clear state variables to prevent lingering references
         mLastForegroundApp = "";
         mLastGameBarState = false;

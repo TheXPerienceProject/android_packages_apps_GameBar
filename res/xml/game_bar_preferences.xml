@@ -17,7 +17,7 @@
             android:key="game_bar_fps_enable"
             android:title="FPS Overlay"
             android:summary="Show current FPS on screen"
-            android:defaultValue="false" />
+            android:defaultValue="true" />
 
         <SwitchPreferenceCompat
             android:key="game_bar_temp_enable"
@@ -29,7 +29,7 @@
             android:key="game_bar_cpu_usage_enable"
             android:title="CPU Usage"
             android:summary="Show current CPU usage percentage"
-            android:defaultValue="false" />
+            android:defaultValue="true" />
 
         <SwitchPreferenceCompat
             android:key="game_bar_cpu_clock_enable"
@@ -65,7 +65,7 @@
             android:key="game_bar_gpu_usage_enable"
             android:title="GPU Usage"
             android:summary="Show GPU usage percentage"
-            android:defaultValue="false" />
+            android:defaultValue="true" />
 
         <SwitchPreferenceCompat
             android:key="game_bar_gpu_clock_enable"
@@ -100,7 +100,7 @@
             android:key="game_bar_text_size"
             android:title="Text Size"
             android:summary="Adjust the size of overlay text"
-            android:defaultValue="16"
+            android:defaultValue="14"
             android:max="32"
             android:min="12" />
 
@@ -116,7 +116,7 @@
             android:key="game_bar_corner_radius"
             android:title="Overlay Corner Radius"
             android:summary="Adjust how rounded the overlay corners should be"
-            android:defaultValue="16"
+            android:defaultValue="90"
             android:max="100"
             android:min="0" />
 
@@ -124,7 +124,7 @@
             android:key="game_bar_padding"
             android:title="Overlay Padding"
             android:summary="Adjust the space around the stats"
-            android:defaultValue="12"
+            android:defaultValue="8"
             android:max="64"
             android:min="0" />
 
@@ -164,7 +164,7 @@
             android:key="game_bar_position"
             android:title="Overlay Position"
             android:summary="Select the position of the overlay on screen"
-            android:defaultValue="top_left"
+            android:defaultValue="top_center"
             android:entries="@array/fps_overlay_position_entries"
             android:entryValues="@array/fps_overlay_position_values" />
 
@@ -185,7 +185,7 @@
             android:key="game_bar_split_mode"
             android:title="Split Mode"
             android:summary="Choose Side-by-Side or Stacked arrangement"
-            android:defaultValue="stacked"
+            android:defaultValue="side_by_side"
             android:entries="@array/game_bar_split_mode_entries"
             android:entryValues="@array/game_bar_split_mode_values" />
     </PreferenceCategory>
@@ -198,25 +198,25 @@
             android:key="game_bar_single_tap_toggle"
             android:title="Enable Single Tap to Toggle"
             android:summary="Tap once to switch between full and minimal overlay formats"
-            android:defaultValue="false" />
+            android:defaultValue="true" />
 
         <SwitchPreferenceCompat
             android:key="game_bar_doubletap_capture"
             android:title="Enable Double Tap to Capture"
             android:summary="Double-tap overlay to start/stop capture logs"
-            android:defaultValue="false" />
+            android:defaultValue="true" />
 
         <SwitchPreferenceCompat
             android:key="game_bar_longpress_enable"
             android:title="Enable Long Press"
             android:summary="Long-press overlay to access GameBar settings"
-            android:defaultValue="false" />
+            android:defaultValue="true" />
 
         <ListPreference
             android:key="game_bar_longpress_timeout"
             android:title="Long Press Duration"
             android:summary="Set the duration required to long-press the overlay"
-            android:defaultValue="1000"
+            android:defaultValue="500"
             android:entries="@array/game_bar_longpress_entries"
             android:entryValues="@array/game_bar_longpress_values"
             android:dependency="game_bar_longpress_enable" />
@@ -255,7 +255,6 @@
             android:key="game_bar_per_app_config"
             android:title="Configure Apps"
             android:summary="Choose which apps will auto-enable GameBar" />
-
     </PreferenceCategory>
 
 </PreferenceScreen>

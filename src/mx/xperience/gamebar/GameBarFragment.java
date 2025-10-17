@@ -84,11 +84,11 @@ public class GameBarFragment extends PreferenceFragmentCompat {
         mCpuClockSwitch     = findPreference("game_bar_cpu_clock_enable");
         mCpuTempSwitch      = findPreference("game_bar_cpu_temp_enable");
         mRamSwitch          = findPreference("game_bar_ram_enable");
-        mRamSpeedSwitch     = findPreference("game_bar_ram_speed_enable");
-        mRamTempSwitch      = findPreference("game_bar_ram_temp_enable");
         mGpuUsageSwitch     = findPreference("game_bar_gpu_usage_enable");
         mGpuClockSwitch     = findPreference("game_bar_gpu_clock_enable");
         mGpuTempSwitch      = findPreference("game_bar_gpu_temp_enable");
+        mRamSpeedSwitch     = findPreference("game_bar_ram_speed_enable");
+        mRamTempSwitch      = findPreference("game_bar_ram_temp_enable");
 
         mCaptureStartPref   = findPreference("game_bar_capture_start");
         mCaptureStopPref    = findPreference("game_bar_capture_stop");
@@ -114,7 +114,6 @@ public class GameBarFragment extends PreferenceFragmentCompat {
         mOverlayFormatPref  = findPreference("game_bar_format");
 
         Preference perAppConfigPref = findPreference("game_bar_per_app_config");
-
         if (perAppConfigPref != null) {
             perAppConfigPref.setOnPreferenceClickListener(pref -> {
                 startActivity(new android.content.Intent(getContext(), GameBarPerAppConfigActivity.class));

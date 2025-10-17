@@ -26,11 +26,10 @@ public class GameBarPerAppConfigActivity extends CollapsingToolbarBaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game_bar_app_selector);
         setTitle("Configure Per-App GameBar");
-
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                 .replace(R.id.content_frame, new GameBarPerAppConfigFragment())
                 .commit();
         }
     }
-}
+} 

@@ -121,4 +121,4 @@ public class GameBarPerAppConfigFragment extends PreferenceFragmentCompat {
             mCategory.addPreference(pref);
         }
     }
-}
+} 
