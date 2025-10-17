@@ -367,17 +367,23 @@ public class GameBarFragment extends PreferenceFragmentCompat {
     @Override
     public void onResume() {
         super.onResume();
-        if (!hasUsageStatsPermission(requireContext())) {
+        Context context = getContext();
+        if (context == null) {
+            return;
+        }
+
+        if (!hasUsageStatsPermission(context)) {
             requestUsageStatsPermission();
         }
-        Context context = getContext();
-        if (context != null) {
-            if ((mMasterSwitch != null && mMasterSwitch.isChecked()) ||
-                (mAutoEnableSwitch != null && mAutoEnableSwitch.isChecked())) {
-                context.startService(new Intent(context, GameBarMonitorService.class));
-            } else {
-                context.stopService(new Intent(context, GameBarMonitorService.class));
-            }
+        // Start or stop monitor service based on current preferences state
+        boolean shouldMonitor = (mMasterSwitch != null && mMasterSwitch.isChecked()) ||
+                               (mAutoEnableSwitch != null && mAutoEnableSwitch.isChecked());
+
+        Intent serviceIntent = new Intent(context, GameBarMonitorService.class);
+        if (shouldMonitor) {
+            context.startService(serviceIntent);
+        } else {
+            context.stopService(serviceIntent);
         }
     }
 
