@@ -30,7 +30,7 @@ public class ForegroundAppDetector {
     private static final String TAG = "ForegroundAppDetector";
     private static String sLastKnownPackage = "Unknown";
     private static long sLastUpdateTime = 0;
-    private static final long CACHE_TIMEOUT = 500; // Reduce cache timeout
+    private static final long CACHE_TIMEOUT = 200; // Faster response for app switching
     
     // Simple reflection caching
     private static boolean sReflectionSetupFailed = false;
@@ -38,7 +38,7 @@ public class ForegroundAppDetector {
     public static String getForegroundPackageName(Context context) {
         // Use cached result if still valid
         long currentTime = System.currentTimeMillis();
-        if (currentTime - sLastUpdateTime < CACHE_TIMEOUT && !"Unknown".equals(sLastKnownPackage)) {
+        if (currentTime - sLastUpdateTime < CACHE_TIMEOUT && sLastKnownPackage != null && !"Unknown".equals(sLastKnownPackage)) {
             return sLastKnownPackage;
         }
 
@@ -64,18 +64,15 @@ public class ForegroundAppDetector {
 
     private static String tryGetRunningTasks(Context context) {
         try {
-            if (context.checkSelfPermission("android.permission.GET_TASKS")
-                == PackageManager.PERMISSION_GRANTED) {
+            ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            if (am == null) return null;
 
-                ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-                List<ActivityManager.RunningTaskInfo> tasks = am.getRunningTasks(1);
-                if (tasks != null && !tasks.isEmpty()) {
-                    ActivityManager.RunningTaskInfo top = tasks.get(0);
-                    if (top.topActivity != null) {
-                        return top.topActivity.getPackageName();
-                    }
+            List<ActivityManager.RunningTaskInfo> tasks = am.getRunningTasks(1);
+            if (tasks != null && !tasks.isEmpty()) {
+                ActivityManager.RunningTaskInfo top = tasks.get(0);
+                if (top.topActivity != null) {
+                    return top.topActivity.getPackageName();
                 }
-            } else {
                 Log.w(TAG, "GET_TASKS permission not granted to this system app?");
             }
         } catch (Exception e) {
