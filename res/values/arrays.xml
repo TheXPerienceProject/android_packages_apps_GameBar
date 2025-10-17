@@ -105,4 +105,17 @@ SPDX-License-Identifier: Apache-2.0
         <item>5000</item>
     </string-array>
 
+    <string-array name="game_bar_animation_entries">
+        <item>Bubble Bounce</item>
+        <item>Particle Explosion</item>
+        <item>Vortex</item>
+        <item>Fade In (Default)</item>
+    </string-array>
+
+    <string-array name="game_bar_animation_values">
+        <item>bubble</item>
+        <item>particle</item>
+        <item>vortex</item>
+        <item>fade</item>
+    </string-array>
 </resources>

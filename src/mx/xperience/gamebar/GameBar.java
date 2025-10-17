@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2025 kenway214
+ * Copyright (C) 2025 The XPerience Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,21 +17,32 @@
 
 package mx.xperience.gamebar;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.app.usage.UsageStatsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.TypedValue;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.BounceInterpolator;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.OvershootInterpolator;
 import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -123,6 +135,8 @@ public class GameBar {
     // Track if layout needs refresh
     private boolean mLayoutChanged = false;
 
+    private String mAnimationStyle = "bubble";
+
     private final Runnable mLongPressRunnable = new Runnable() {
         @Override
         public void run() {
@@ -187,6 +201,7 @@ public class GameBar {
     public void applyPreferences() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
 
+        mAnimationStyle  = prefs.getString("game_bar_animation_style", "bubble");
         mShowFps         = prefs.getBoolean("game_bar_fps_enable", true);
         mShowBatteryTemp = prefs.getBoolean("game_bar_temp_enable", false);
         mShowCpuUsage    = prefs.getBoolean("game_bar_cpu_usage_enable", true);
@@ -318,6 +333,9 @@ public class GameBar {
 
         mWindowManager.addView(mOverlayView, mLayoutParams);
         mIsShowing = true;
+
+        applyEntryAnimation();
+
         startUpdates();
 
         // Start the FPS meter if using the new API method.
@@ -326,32 +344,484 @@ public class GameBar {
         }
     }
 
+    /**
+     * Applies the selected entry animation based on user preference.
+     * Available styles: "bubble", "particle", "fade"
+     */
+    private void applyEntryAnimation() {
+        switch (mAnimationStyle) {
+            case "bubble":
+                animateBubbleEntry();
+                break;
+            case "particle":
+                animateParticleExplosionEntry();
+                break;
+            case "vortex":
+                animateVortexEntry();
+                break;
+            case "fade":
+            default:
+                animateFadeEntry();
+                break;
+        }
+    }
+
+    /**
+     * Real particle explosion: Creates actual particle elements that 
+     * fly out from center in all directions.
+     */
+    private void animateParticleExplosionEntry() {
+        if (mOverlayView == null || mWindowManager == null) return;
+
+        // Ocultar vista principal temporalmente
+        mOverlayView.setAlpha(0f);
+        mOverlayView.setScaleX(0.1f);
+        mOverlayView.setScaleY(0.1f);
+
+        // Crear partículas directamente en el WindowManager
+        int[] colors = {Color.RED, Color.YELLOW, Color.GREEN, Color.CYAN, 
+                    Color.BLUE, Color.MAGENTA, Color.WHITE, Color.parseColor("#FF9800")};
+        
+        final List<View> particles = new ArrayList<>();
+        
+        for (int i = 0; i < 8; i++) {
+            View particle = new View(mContext);
+            particle.setBackgroundColor(colors[i]);
+            
+            // Tamaño de partícula
+            int size = dpToPx(mContext, 8);
+            
+            // Layout params para WindowManager
+            WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                size, size,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT
+            );
+            
+            // Posicionar en el centro (donde está el overlay)
+            if (mLayoutParams != null) {
+                params.gravity = Gravity.TOP | Gravity.START;
+                params.x = mLayoutParams.x + (mOverlayView.getWidth() / 2) - (size / 2);
+                params.y = mLayoutParams.y + (mOverlayView.getHeight() / 2) - (size / 2);
+            } else {
+                params.gravity = Gravity.CENTER;
+            }
+            
+            particle.setLayoutParams(params);
+            
+            // Añadir al WindowManager
+            mWindowManager.addView(particle, params);
+            particles.add(particle);
+            
+            // Calcular dirección de explosión
+            double angle = Math.PI * 2 * i / 8;
+            float distance = dpToPx(mContext, 100);
+            float endX = (float) (Math.cos(angle) * distance);
+            float endY = (float) (Math.sin(angle) * distance);
+            
+            // Animación de partícula
+            AnimatorSet particleAnim = new AnimatorSet();
+            particleAnim.playTogether(
+                ObjectAnimator.ofFloat(particle, "translationX", 0f, endX),
+                ObjectAnimator.ofFloat(particle, "translationY", 0f, endY),
+                ObjectAnimator.ofFloat(particle, "scaleX", 1f, 0.5f),
+                ObjectAnimator.ofFloat(particle, "scaleY", 1f, 0.5f),
+                ObjectAnimator.ofFloat(particle, "alpha", 1f, 0f)
+            );
+            particleAnim.setDuration(800);
+            particleAnim.setStartDelay(i * 50L); // Efecto escalonado
+            
+            // Remover partícula después de la animación
+            particleAnim.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    try {
+                        mWindowManager.removeView(particle);
+                    } catch (Exception e) {
+                        // Ignorar si ya fue removida
+                    }
+                }
+            });
+            particleAnim.start();
+        }
+
+        // Mostrar vista principal después de las partículas
+        new Handler().postDelayed(() -> {
+            AnimatorSet mainAppear = new AnimatorSet();
+            mainAppear.playTogether(
+                ObjectAnimator.ofFloat(mOverlayView, "alpha", 0f, 1f),
+                ObjectAnimator.ofFloat(mOverlayView, "scaleX", 0.1f, 1f),
+                ObjectAnimator.ofFloat(mOverlayView, "scaleY", 0.1f, 1f),
+                ObjectAnimator.ofFloat(mOverlayView, "rotation", 0f, 360f)
+            );
+            mainAppear.setDuration(600);
+            mainAppear.setInterpolator(new OvershootInterpolator(1.2f));
+            mainAppear.start();
+        }, 400);
+    }
+
+    /**
+    * Slow-motion bubble animation: Elegant bubble formation with smooth,
+    * graceful movements that can be fully appreciated.
+    * Perfect for showing off the beautiful bubble effect.
+    */
+    private void animateBubbleEntry() {
+        if (mOverlayView == null) return;
+
+        // Initial state - tiny invisible dot (bubble seed)
+        mOverlayView.setScaleX(0f);
+        mOverlayView.setScaleY(0f);
+        mOverlayView.setAlpha(0f);
+        mOverlayView.setRotation(0f);
+
+        AnimatorSet bubbleSequence = new AnimatorSet();
+
+        // Phase 1: Slow bubble formation (1 second)
+        ObjectAnimator inflateX = ObjectAnimator.ofFloat(mOverlayView, "scaleX", 0f, 1.15f);
+        ObjectAnimator inflateY = ObjectAnimator.ofFloat(mOverlayView, "scaleY", 0f, 1.15f);
+        ObjectAnimator fadeIn = ObjectAnimator.ofFloat(mOverlayView, "alpha", 0f, 0.8f);
+
+        inflateX.setDuration(1000);
+        inflateY.setDuration(1000);
+        fadeIn.setDuration(800);
+
+        // Phase 2: Gentle contraction and stabilization (0.8 seconds)
+        ObjectAnimator stabilizeX = ObjectAnimator.ofFloat(mOverlayView, "scaleX", 1.15f, 0.92f);
+        ObjectAnimator stabilizeY = ObjectAnimator.ofFloat(mOverlayView, "scaleY", 1.15f, 0.92f);
+        ObjectAnimator fadeFull = ObjectAnimator.ofFloat(mOverlayView, "alpha", 0.8f, 0.95f);
+
+        stabilizeX.setDuration(800);
+        stabilizeY.setDuration(800);
+        fadeFull.setDuration(600);
+
+        // Phase 3: Delicate wobble sequence (1.2 seconds total)
+        // First gentle wobble
+        ObjectAnimator wobble1X = ObjectAnimator.ofFloat(mOverlayView, "scaleX", 0.92f, 1.05f);
+        ObjectAnimator wobble1Y = ObjectAnimator.ofFloat(mOverlayView, "scaleY", 0.92f, 0.96f);
+        ObjectAnimator rotate1 = ObjectAnimator.ofFloat(mOverlayView, "rotation", 0f, -3f);
+
+        wobble1X.setDuration(400);
+        wobble1Y.setDuration(400);
+        rotate1.setDuration(400);
+
+        // Second counter-wobble
+        ObjectAnimator wobble2X = ObjectAnimator.ofFloat(mOverlayView, "scaleX", 1.05f, 0.98f);
+        ObjectAnimator wobble2Y = ObjectAnimator.ofFloat(mOverlayView, "scaleY", 0.96f, 1.03f);
+        ObjectAnimator rotate2 = ObjectAnimator.ofFloat(mOverlayView, "rotation", -3f, 2f);
+
+        wobble2X.setDuration(400);
+        wobble2Y.setDuration(400);
+        rotate2.setDuration(400);
+
+        // Final perfect alignment
+        ObjectAnimator finalX = ObjectAnimator.ofFloat(mOverlayView, "scaleX", 0.98f, 1f);
+        ObjectAnimator finalY = ObjectAnimator.ofFloat(mOverlayView, "scaleY", 1.03f, 1f);
+        ObjectAnimator finalRotate = ObjectAnimator.ofFloat(mOverlayView, "rotation", 2f, 0f);
+        ObjectAnimator finalFade = ObjectAnimator.ofFloat(mOverlayView, "alpha", 0.95f, 1f);
+
+        finalX.setDuration(400);
+        finalY.setDuration(400);
+        finalRotate.setDuration(400);
+        finalFade.setDuration(400);
+
+        // Combine wobble phases
+        AnimatorSet firstWobble = new AnimatorSet();
+        firstWobble.playTogether(wobble1X, wobble1Y, rotate1);
+
+        AnimatorSet secondWobble = new AnimatorSet();
+        secondWobble.playTogether(wobble2X, wobble2Y, rotate2);
+
+        AnimatorSet finalWobble = new AnimatorSet();
+        finalWobble.playTogether(finalX, finalY, finalRotate, finalFade);
+
+        // Complete slow-motion sequence
+        bubbleSequence.play(inflateX).with(inflateY).with(fadeIn);
+        bubbleSequence.play(stabilizeX).with(stabilizeY).with(fadeFull).after(1000);
+        bubbleSequence.play(firstWobble).after(1800);
+        bubbleSequence.play(secondWobble).after(2200);
+        bubbleSequence.play(finalWobble).after(2600);
+
+        bubbleSequence.start();
+    }
+
+    /**
+    * Vortex animation: Creates a spinning vortex effect that expands
+    * and then settles into position. More like a transforming whirlwind
+    * than particle explosion.
+    */
+    private void animateVortexEntry() {
+        if (mOverlayView == null) return;
+
+        // Initial state - small and centered
+        mOverlayView.setScaleX(0.1f);
+        mOverlayView.setScaleY(0.1f);
+        mOverlayView.setAlpha(0f);
+        mOverlayView.setRotation(0f);
+
+        AnimatorSet explosion = new AnimatorSet();
+
+        // Phase 1: Initial explosion ("particles" fly out)
+        ObjectAnimator vortexX = ObjectAnimator.ofFloat(mOverlayView, "scaleX", 0.1f, 1.3f);
+        ObjectAnimator vortexY = ObjectAnimator.ofFloat(mOverlayView, "scaleY", 0.1f, 1.3f);
+        ObjectAnimator vortexRotate = ObjectAnimator.ofFloat(mOverlayView, "rotation", 0f, 360f);
+        ObjectAnimator vortexFade = ObjectAnimator.ofFloat(mOverlayView, "alpha", 0f, 0.7f);
+
+        vortexX.setDuration(300);
+        vortexY.setDuration(300);
+        vortexRotate.setDuration(400);
+        vortexFade.setDuration(200);
+
+        // Phase 2: Gentle contraction to normal size
+        ObjectAnimator settleX = ObjectAnimator.ofFloat(mOverlayView, "scaleX", 1.3f, 1f);
+        ObjectAnimator settleY = ObjectAnimator.ofFloat(mOverlayView, "scaleY", 1.3f, 1f);
+        ObjectAnimator settleFade = ObjectAnimator.ofFloat(mOverlayView, "alpha", 0.7f, 1f);
+        ObjectAnimator settleRotate = ObjectAnimator.ofFloat(mOverlayView, "rotation", 360f, 0f);
+
+        settleX.setDuration(200);
+        settleY.setDuration(200);
+        settleFade.setDuration(150);
+        settleRotate.setDuration(250);
+
+        // Sequence: explosion → settlement
+        explosion.play(vortexX).with(vortexY).with(vortexRotate).with(vortexFade);
+        explosion.play(settleX).with(settleY).with(settleFade).with(settleRotate).after(300);
+
+        explosion.setInterpolator(new OvershootInterpolator(1.5f));
+        explosion.start();
+    }
+
+    /**
+     * Fade animation: Simple fade-in with slight scale effect.
+     * The view fades in while gently scaling up from 90% to 100% size.
+     * Uses DecelerateInterpolator for smooth entry.
+     */
+    private void animateFadeEntry() {
+        if (mOverlayView == null) return;
+
+        mOverlayView.setAlpha(0f);
+        mOverlayView.setScaleX(0.9f);
+        mOverlayView.setScaleY(0.9f);
+
+        AnimatorSet fadeIn = new AnimatorSet();
+        fadeIn.playTogether(
+            ObjectAnimator.ofFloat(mOverlayView, "alpha", 0f, 1f),
+            ObjectAnimator.ofFloat(mOverlayView, "scaleX", 0.9f, 1f),
+            ObjectAnimator.ofFloat(mOverlayView, "scaleY", 0.9f, 1f)
+        );
+        fadeIn.setDuration(650);
+        fadeIn.setInterpolator(new DecelerateInterpolator());
+        fadeIn.start();
+    }
+
+    /* ==============================Finish animations */
+
     private int initialX, initialY;
     private float initialTouchX, initialTouchY;
 
     public void hide() {
         if (!mIsShowing || mWindowManager == null) return;
+
+        // Stop updates immediately but DON'T remove view yet
         stopUpdates();
-        try {
-            if (mOverlayView != null) {
-                mWindowManager.removeView(mOverlayView);
+
+        // Apply exit animation and remove view when animation completes
+        applyExitAnimation(() -> {
+            try {
+                if (mOverlayView != null) {
+                    mWindowManager.removeView(mOverlayView);
+                }
+            } catch (Exception e) {
+                // Ignore exceptions during removal
+            } finally {
+                // Cleanup resources
                 mOverlayView = null;
+                mRootLayout = null;
+                mIsShowing = false;
+
+                // Stop FPS meter
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    GameBarFpsMeter.getInstance(mContext).stop();
+                }
             }
-        } catch (IllegalArgumentException e) {
-            // View not attached to window manager - ignore
-        } catch (Exception e) {
-            // Other exceptions during view removal
-        } finally {
-            // Ensure cleanup even if removal fails
-            mOverlayView = null;
-            mRootLayout = null;
-        }
-        mIsShowing = false;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            GameBarFpsMeter.getInstance(mContext).stop();
+        });
+    }
+
+    /**
+     * Applies the selected exit animation based on user preference.
+     * Available styles: "bubble", "particle", "vortex", "fade"
+     * @param onComplete Callback to execute when animation completes
+     */
+    private void applyExitAnimation(Runnable onComplete) {
+        switch (mAnimationStyle) {
+            case "bubble":
+                animateBubbleExit(onComplete);
+                break;
+            case "particle":
+                animateRealParticleExplosionExit(onComplete);
+                break;
+            case "vortex":
+                animateVortexExit(onComplete);
+                break;
+            case "fade":
+            default:
+                animateFadeExit(onComplete);
+                break;
         }
     }
-    
+
+    /**
+    * Slow graceful bubble exit: Bubble gently floats away and disappears
+    */
+    private void animateBubbleExit(Runnable onComplete) {
+        AnimatorSet floatAway = new AnimatorSet();
+
+        // Gentle float-up and fade away
+        floatAway.playTogether(
+            ObjectAnimator.ofFloat(mOverlayView, "translationY", 0f, -120f),
+            ObjectAnimator.ofFloat(mOverlayView, "alpha", 1f, 0f),
+            ObjectAnimator.ofFloat(mOverlayView, "scaleX", 1f, 1.1f),
+            ObjectAnimator.ofFloat(mOverlayView, "scaleY", 1f, 1.1f),
+            ObjectAnimator.ofFloat(mOverlayView, "rotation", 0f, 8f)
+        );
+        floatAway.setDuration(1200);
+        floatAway.setInterpolator(new DecelerateInterpolator());
+        floatAway.addListener(createAnimationListener(onComplete));
+        floatAway.start();
+    }
+
+    /**
+     * Particle vortex animation: Reverse of particle explosion.
+     * The view shrinks rapidly with rotation, simulating particles collapsing inward.
+     * Uses AccelerateInterpolator for quick disappearance.
+     */
+    private void animateVortexExit(Runnable onComplete) {
+        AnimatorSet implosion = new AnimatorSet();
+        implosion.playTogether(
+            ObjectAnimator.ofFloat(mOverlayView, "scaleX", 1f, 0.1f),
+            ObjectAnimator.ofFloat(mOverlayView, "scaleY", 1f, 0.1f),
+            ObjectAnimator.ofFloat(mOverlayView, "alpha", 1f, 0f),
+            ObjectAnimator.ofFloat(mOverlayView, "rotation", 0f, -180f)
+        );
+        implosion.setDuration(300);
+        implosion.setInterpolator(new AccelerateInterpolator());
+        implosion.addListener(createAnimationListener(onComplete));
+        implosion.start();
+    }
+
+    /**
+     * Fade exit animation: Simple fade-out with slight scale effect.
+     * The view fades out while gently scaling down to 80% size.
+     * Smooth disappearing effect.
+     */
+    private void animateFadeExit(Runnable onComplete) {
+        AnimatorSet fadeOut = new AnimatorSet();
+        fadeOut.playTogether(
+            ObjectAnimator.ofFloat(mOverlayView, "alpha", 1f, 0f),
+            ObjectAnimator.ofFloat(mOverlayView, "scaleX", 1f, 0.8f),
+            ObjectAnimator.ofFloat(mOverlayView, "scaleY", 1f, 0.8f)
+        );
+        fadeOut.setDuration(300);
+        fadeOut.addListener(createAnimationListener(onComplete));
+        fadeOut.start();
+    }
+
+    /**
+     * Real particle implosion: Particles fly back to center and disappear.
+     */
+    private void animateRealParticleExplosionExit(Runnable onComplete) {
+        if (mOverlayView == null || mWindowManager == null) {
+            onComplete.run();
+            return;
+        }
+
+        // Ocultar vista principal
+        mOverlayView.setAlpha(0f);
+
+        // Crear partículas que vuelvan al centro
+        int[] colors = {Color.RED, Color.YELLOW, Color.GREEN, Color.CYAN, 
+                    Color.BLUE, Color.MAGENTA, Color.WHITE, Color.parseColor("#FF9800")};
+        
+        final List<View> particles = new ArrayList<>();
+        
+        for (int i = 0; i < 8; i++) {
+            View particle = new View(mContext);
+            particle.setBackgroundColor(colors[i]);
+            
+            int size = dpToPx(mContext, 8);
+            WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                size, size,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT
+            );
+            
+            // Posición inicial (explotada)
+            double angle = Math.PI * 2 * i / 8;
+            float distance = dpToPx(mContext, 100);
+            float startX = (float) (Math.cos(angle) * distance);
+            float startY = (float) (Math.sin(angle) * distance);
+            
+            if (mLayoutParams != null) {
+                params.gravity = Gravity.TOP | Gravity.START;
+                params.x = mLayoutParams.x + (mOverlayView.getWidth() / 2) - (size / 2) + (int)startX;
+                params.y = mLayoutParams.y + (mOverlayView.getHeight() / 2) - (size / 2) + (int)startY;
+            } else {
+                params.gravity = Gravity.CENTER;
+            }
+            
+            particle.setLayoutParams(params);
+            particle.setTranslationX(0); // Reset para animación
+            particle.setTranslationY(0);
+            
+            mWindowManager.addView(particle, params);
+            particles.add(particle);
+            
+            // Animación de implosión (vuelven al centro)
+            AnimatorSet implosion = new AnimatorSet();
+            implosion.playTogether(
+                ObjectAnimator.ofFloat(particle, "translationX", startX, 0f),
+                ObjectAnimator.ofFloat(particle, "translationY", startY, 0f),
+                ObjectAnimator.ofFloat(particle, "scaleX", 1f, 0f),
+                ObjectAnimator.ofFloat(particle, "scaleY", 1f, 0f),
+                ObjectAnimator.ofFloat(particle, "alpha", 1f, 0f)
+            );
+            implosion.setDuration(600);
+            implosion.setStartDelay(i * 40L);
+            implosion.start();
+            
+            implosion.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    try {
+                        mWindowManager.removeView(particle);
+                    } catch (Exception e) {
+                        // Ignorar
+                    }
+                }
+            });
+        }
+
+        // Ejecutar completion después
+        new Handler().postDelayed(onComplete, 800);
+    }
+
+     /**
+     * Creates an animation listener that executes the completion callback.
+     * @param onComplete Callback to run when animation ends
+     * @return AnimatorListener that handles animation completion
+     */
+    private Animator.AnimatorListener createAnimationListener(Runnable onComplete) {
+        return new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                onComplete.run();
+            }
+        };
+    }
+
     private void stopUpdates() {
         if (mHandler != null) {
             mHandler.removeCallbacks(mUpdateRunnable);
@@ -359,7 +829,7 @@ public class GameBar {
             mHandler.removeCallbacksAndMessages(null);
         }
     }
-    
+
     public void cleanup() {
         hide();
         if (mHandler != null) {

@@ -243,6 +243,18 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        android:title="GameBar Animation">
+
+        <ListPreference
+            android:key="game_bar_animation_style"
+            android:title="Animation Style"
+            android:summary="Choose how GameBar appears"
+            android:entries="@array/game_bar_animation_entries"
+            android:entryValues="@array/game_bar_animation_values"
+            android:defaultValue="bubble"/>
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:title="Per-App GameBar">
 
         <SwitchPreferenceCompat

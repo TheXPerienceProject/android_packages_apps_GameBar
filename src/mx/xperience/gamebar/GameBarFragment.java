@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2025 kenway214
+ * Copyright (C) 2025 The XPerience Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,6 +69,7 @@ public class GameBarFragment extends PreferenceFragmentCompat {
     private ListPreference mOverlayFormatPref;
     private SwitchPreferenceCompat mRamSpeedSwitch;
     private SwitchPreferenceCompat mRamTempSwitch;
+    private ListPreference mAnimationPref;
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -112,6 +114,14 @@ public class GameBarFragment extends PreferenceFragmentCompat {
         mPositionPref       = findPreference("game_bar_position");
         mSplitModePref      = findPreference("game_bar_split_mode");
         mOverlayFormatPref  = findPreference("game_bar_format");
+        mAnimationPref      = findPreference("game_bar_animation_style");
+        if (mAnimationPref != null) {
+            mAnimationPref.setOnPreferenceChangeListener((pref, newValue) -> {
+                // Animation preference changed - the GameBar will handle it automatically
+                // through applyPreferences() when needed
+                return true;
+            });
+        }
 
         Preference perAppConfigPref = findPreference("game_bar_per_app_config");
         if (perAppConfigPref != null) {
