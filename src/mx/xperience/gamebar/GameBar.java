@@ -24,14 +24,17 @@ import android.animation.ObjectAnimator;
 import android.app.usage.UsageStatsManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
+import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.BounceInterpolator;
@@ -79,7 +82,17 @@ public class GameBar {
     }
 
     private static final String FPS_PATH          = "/sys/class/drm/sde-crtc-0/measured_fps";
-    private static final String BATTERY_TEMP_PATH = "/sys/class/power_supply/battery/temp";
+    private static final String[] BATTERY_TEMP_PATHS = new String[] {
+        "/sys/class/power_supply/battery/temp",
+        "/sys/class/power_supply/battery/batt_temp",
+        "/sys/class/power_supply/bms/temp",
+        // Paths específicos de OnePlus
+        "/sys/class/oplus_chg/battery/temp",
+        "/sys/class/oplus_chg/battery/batt_temp",
+        "/sys/class/oplus_chg/battery/temperature",
+        "/sys/class/oplus_chg/bq27541/temp",
+        "/sys/class/thermal/thermal_zone0/temp"
+    };
 
     private static final String PREF_KEY_X = "game_bar_x";
     private static final String PREF_KEY_Y = "game_bar_y";
@@ -860,15 +873,21 @@ public class GameBar {
         // 2) Battery temp
         String batteryTempStr = "N/A";
         if (mShowBatteryTemp) {
-            String tmp = readLine(BATTERY_TEMP_PATH);
-            if (tmp != null && !tmp.isEmpty()) {
-                try {
-                    int raw = Integer.parseInt(tmp.trim());
-                    float c = raw / 10f;
-                    batteryTempStr = String.format(Locale.getDefault(), "%.1f", c);
-                } catch (NumberFormatException ignored) {}
+            
+            //Get battery temp from sys path
+            batteryTempStr = readBatteryTemperature();
+
+            //fallback  if sys fails or returned N/A
+            if (batteryTempStr.equals("N/A")) {
+                String apiTemp = getBatteryTemperatureString(mContext);
+                // Only update if the API returned a valid value
+                if (apiTemp != null && !apiTemp.equals("N/A")) {
+                    batteryTempStr = apiTemp;
+                }
             }
-            statViews.add(createStatLine("Temp", batteryTempStr + "°C"));
+
+            statViews.add(createStatLine("Temp", batteryTempStr));
+
         }
 
         // 3) CPU usage
@@ -1306,5 +1325,159 @@ public class GameBar {
     private static int dpToPx(Context context, int dp) {
         float scale = context.getResources().getDisplayMetrics().density;
         return Math.round(dp * scale);
+    }
+
+    /**
+     * Converts raw temperature values from various Android devices to Celsius.
+     * Different manufacturers use different formats and units:
+     * - OnePlus: Often uses microvolts (µV) or custom scales
+     * - Xiaomi: Typically uses deci-degrees (tenths of °C) or direct °C
+     * - Motorola: Usually follows standard Android (deci-degrees)
+     * - Samsung: Generally uses deci-degrees
+     * 
+     * @param raw The raw integer value read from the sysfs file
+     * @param path The sysfs path where the value was read from (for debugging)
+     * @return Temperature in Celsius, or Float.NaN if conversion fails
+     */
+    private float convertUniversalBatteryTemperature(int raw, String path) {
+        // Log raw value for debugging
+        Log.d("TempConversion", "Converting raw value: " + raw + " from path: " + path);
+        
+        // First, check for obviously invalid values
+        if (raw == 0 || raw == -1 || raw == 255 || raw == 65535) {
+            return Float.NaN;
+        }
+        
+        // 1. Very large values (likely microvolts - common in OnePlus and some custom ROMs)
+        if (raw > 100000 && raw < 1000000) {
+            // OnePlus style conversion: (raw / 1000 - 273)
+            float test1 = (raw / 1000f - 273f);
+            if (isReasonableTemperature(test1)) {
+                Log.d("TempConversion", "Detected µV format: " + raw + " -> " + test1 + "°C");
+                return test1;
+            }
+            
+            // Alternative conversion for different sensor types
+            float test2 = (raw - 500000) / 1000f;
+            if (isReasonableTemperature(test2)) {
+                Log.d("TempConversion", "Detected µV format (alt): " + raw + " -> " + test2 + "°C");
+                return test2;
+            }
+        }
+        
+        // 2. Standard Android format: deci-degrees Celsius (tenths of °C)
+        // This works for Motorola, Samsung, most Xiaomi, and stock Android devices
+        // Typical range: 200-400 (20.0°C - 40.0°C)
+        if (raw >= 150 && raw <= 600) { // 15°C to 60°C in deci-degrees
+            float deciCelsius = raw / 10f;
+            if (isReasonableTemperature(deciCelsius)) {
+                Log.d("TempConversion", "Detected deci-°C: " + raw + " -> " + deciCelsius + "°C");
+                return deciCelsius;
+            }
+        }
+        
+        // 3. Direct Celsius (some Xiaomi and custom kernels)
+        // Typical range: 15-50 (direct degrees Celsius)
+        if (raw >= 10 && raw <= 80) {
+            Log.d("TempConversion", "Detected direct °C: " + raw + " -> " + raw + "°C");
+            return raw;
+        }
+        
+        // 4. Moderate values that might be millivolts or custom scales
+        if (raw > 1000 && raw < 100000) {
+            // Try millivolt to Celsius conversion
+            float test1 = raw / 1000f;
+            if (isReasonableTemperature(test1)) {
+                Log.d("TempConversion", "Detected mV format: " + raw + " -> " + test1 + "°C");
+                return test1;
+            }
+            
+            // Try alternative scaling
+            float test2 = raw / 100f;
+            if (isReasonableTemperature(test2)) {
+                Log.d("TempConversion", "Detected /100 format: " + raw + " -> " + test2 + "°C");
+                return test2;
+            }
+        }
+        
+        Log.d("TempConversion", "No valid conversion found for: " + raw);
+        return Float.NaN;
+    }
+
+    /**
+     * Checks if a temperature value is within reasonable battery temperature range
+     */
+    private boolean isReasonableTemperature(float celsius) {
+        return celsius >= 0 && celsius <= 80;
+    }
+
+    private String readBatteryTemperature() {
+        for (String path : BATTERY_TEMP_PATHS) {
+            String temp = readLine(path);
+            if (temp != null && !temp.isEmpty()) {
+                try {
+                    int raw = Integer.parseInt(temp.trim());
+                    float celsius = convertUniversalBatteryTemperature(raw, path);
+                    
+                    if (!Float.isNaN(celsius)) {
+                        return String.format(Locale.getDefault(), "%.1f", celsius) + "°C";
+                    }
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+            }
+        }
+        return "N/A";
+    }
+
+    public String getBatteryTemperatureString(Context context) {
+        
+        IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        
+        // Registering the Receiver with “null” returns the current “sticky” Intent 
+        // with battery information, without the need for a persistent Receiver.
+        Intent batteryStatus = context.registerReceiver(null, ifilter);
+
+        if (batteryStatus != null) {
+            // Obtain the value of EXTRA_TEMPERATURE
+            int rawTemp = batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
+
+            if (rawTemp >= 0) {
+                // The value is in tenths of a degree Celsius.
+                float c = rawTemp / 10f;
+                return String.format(Locale.getDefault(), "%.1f", c) + "°C";
+            }
+        }
+        return "N/A";
+    }
+
+    /**
+     * Debug method to log all available battery temperature paths and their raw values
+     * This helps identify which paths are accessible and what format they use
+     */
+    private void debugBatteryTemperature() {
+        Log.d("BatteryDebug", "=== Battery Temperature Debug ===");
+        
+        for (String path : BATTERY_TEMP_PATHS) {
+            try {
+                String value = readLine(path);
+                if (value != null && !value.isEmpty()) {
+                    int raw = Integer.parseInt(value.trim());
+                    float converted = convertUniversalBatteryTemperature(raw, path);
+                    
+                    Log.d("BatteryDebug", 
+                        "Path: " + path + 
+                        " | Raw: " + raw + 
+                        " | Converted: " + (!Float.isNaN(converted) ? String.format("%.1f °C", converted) : "N/A") +
+                        " | Hex: 0x" + Integer.toHexString(raw));
+                } else {
+                    Log.d("BatteryDebug", "Path: " + path + " | No data or inaccessible");
+                }
+            } catch (Exception e) {
+                Log.d("BatteryDebug", "Path: " + path + " | Error: " + e.getMessage());
+            }
+        }
+        
+        Log.d("BatteryDebug", "=== End Debug ===");
     }
 }
