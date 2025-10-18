@@ -66,6 +66,8 @@ import java.util.Locale;
 
 public class GameBar {
 
+    private static final boolean DEBUG = false;
+
     private static GameBar sInstance;
     public static synchronized GameBar getInstance(Context context) {
         if (sInstance == null) {
@@ -1341,7 +1343,7 @@ public class GameBar {
      */
     private float convertUniversalBatteryTemperature(int raw, String path) {
         // Log raw value for debugging
-        Log.d("TempConversion", "Converting raw value: " + raw + " from path: " + path);
+        if (DEBUG) Log.d("TempConversion", "Converting raw value: " + raw + " from path: " + path);
         
         // First, check for obviously invalid values
         if (raw == 0 || raw == -1 || raw == 255 || raw == 65535) {
@@ -1353,14 +1355,14 @@ public class GameBar {
             // OnePlus style conversion: (raw / 1000 - 273)
             float test1 = (raw / 1000f - 273f);
             if (isReasonableTemperature(test1)) {
-                Log.d("TempConversion", "Detected µV format: " + raw + " -> " + test1 + "°C");
+                if (DEBUG) Log.d("TempConversion", "Detected µV format: " + raw + " -> " + test1 + "°C");
                 return test1;
             }
             
             // Alternative conversion for different sensor types
             float test2 = (raw - 500000) / 1000f;
             if (isReasonableTemperature(test2)) {
-                Log.d("TempConversion", "Detected µV format (alt): " + raw + " -> " + test2 + "°C");
+                if (DEBUG) Log.d("TempConversion", "Detected µV format (alt): " + raw + " -> " + test2 + "°C");
                 return test2;
             }
         }
@@ -1371,7 +1373,7 @@ public class GameBar {
         if (raw >= 150 && raw <= 600) { // 15°C to 60°C in deci-degrees
             float deciCelsius = raw / 10f;
             if (isReasonableTemperature(deciCelsius)) {
-                Log.d("TempConversion", "Detected deci-°C: " + raw + " -> " + deciCelsius + "°C");
+                if (DEBUG) Log.d("TempConversion", "Detected deci-°C: " + raw + " -> " + deciCelsius + "°C");
                 return deciCelsius;
             }
         }
@@ -1379,7 +1381,7 @@ public class GameBar {
         // 3. Direct Celsius (some Xiaomi and custom kernels)
         // Typical range: 15-50 (direct degrees Celsius)
         if (raw >= 10 && raw <= 80) {
-            Log.d("TempConversion", "Detected direct °C: " + raw + " -> " + raw + "°C");
+            if (DEBUG) Log.d("TempConversion", "Detected direct °C: " + raw + " -> " + raw + "°C");
             return raw;
         }
         
@@ -1388,19 +1390,19 @@ public class GameBar {
             // Try millivolt to Celsius conversion
             float test1 = raw / 1000f;
             if (isReasonableTemperature(test1)) {
-                Log.d("TempConversion", "Detected mV format: " + raw + " -> " + test1 + "°C");
+                if (DEBUG) Log.d("TempConversion", "Detected mV format: " + raw + " -> " + test1 + "°C");
                 return test1;
             }
             
             // Try alternative scaling
             float test2 = raw / 100f;
             if (isReasonableTemperature(test2)) {
-                Log.d("TempConversion", "Detected /100 format: " + raw + " -> " + test2 + "°C");
+                if (DEBUG) Log.d("TempConversion", "Detected /100 format: " + raw + " -> " + test2 + "°C");
                 return test2;
             }
         }
         
-        Log.d("TempConversion", "No valid conversion found for: " + raw);
+        if (DEBUG) Log.d("TempConversion", "No valid conversion found for: " + raw);
         return Float.NaN;
     }
 
@@ -1456,6 +1458,7 @@ public class GameBar {
      * This helps identify which paths are accessible and what format they use
      */
     private void debugBatteryTemperature() {
+        if (!DEBUG) return; //do nothing if DEBUG is disabled
         Log.d("BatteryDebug", "=== Battery Temperature Debug ===");
         
         for (String path : BATTERY_TEMP_PATHS) {
