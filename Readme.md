@@ -45,3 +45,14 @@ sepolicy
 [sepolicy](https://github.com/TheXPerienceProject/android_device_xperience_sepolicy/commit/b62d3c027dc8042d3e37329d2e841236d5b1efc3)
 
 original work at - until [GameBar](https://github.com/peridot-hyperos-2/device_xiaomi_peridot/commit/401a25032ab8ceafe5df40e418326389fc24cb00)
+
+--------
+To build add this to your device 
+==================================================
+# GameBar init rc
+PRODUCT_PACKAGES += \
+    init.gamebar.rc
+
+# GameBar app
+PRODUCT_PACKAGES += \
+    GameBar

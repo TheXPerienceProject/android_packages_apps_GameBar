@@ -46,3 +46,11 @@ android_app {
 //    sub_dir: "permissions",
 //    system_ext_specific: true,
 //}
+
+
+prebuilt_etc {
+    name: "init.gamebar.rc",
+    src: "init.gamebar.rc",
+    sub_dir: "init",
+    vendor: true,
+}
